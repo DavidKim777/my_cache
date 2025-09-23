@@ -3,6 +3,7 @@
 -export([create/1, insert/4, lookup/2, delete_obsolete/1]).
 
 -record(cache_entry, {value, expire_time}).
+
 create(my_cache) ->
   ets:new(my_cache, [set, named_table]),
   ok.
@@ -15,9 +16,9 @@ insert(TableName, Kay, Value, Ttl) ->
 lookup(TableName, Key) ->
   CurrentTime = erlang:system_time(seconds),
   case ets:lookup(TableName, Key) of
-    [{Key, #cache_entry{value=Value, expire_time=ExpireTime}}] when ExpireTime == undefined ->
+    [{Key, #cache_entry{value = Value, expire_time = ExpireTime}}] when ExpireTime == undefined ->
       {ok, Value};
-    [{Key, #cache_entry{value=Value, expire_time=ExpireTime}}] when is_integer(ExpireTime), ExpireTime > CurrentTime ->
+    [{Key, #cache_entry{value = Value, expire_time = ExpireTime}}] when is_integer(ExpireTime), ExpireTime > CurrentTime ->
       {ok, Value};
     _ ->
       undefined
