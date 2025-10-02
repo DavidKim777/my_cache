@@ -47,7 +47,9 @@ create_map([], [], Map) ->
 create_map([], [<<" ">>], Map) ->
   Map;
 create_map([H | T], [H1 | T1], Map) ->
-  create_map(T, T1, Map#{H => H1}).
+  Kay = trim_binary(H),
+  Value = trim_binary(H1),
+  create_map(T, T1, Map#{Kay => Value}).
 
 check_value([], <<>>, Acc) ->
   lists:reverse(Acc);
@@ -130,7 +132,8 @@ cutter_list([[<<X, Rest/binary>> | T]], BinAcc, Acc, Acc1) ->
 one_list([H]) ->
   H.
 
-kay_and_value([], Acc1, Acc2) ->
+kay_and_value([], Acc0, Acc2) ->
+  Acc1 = trim_binary(Acc0),
   {lists:reverse(Acc2), lists:reverse(Acc1)};
 kay_and_value([H, H1| T], Acc1, Acc2) ->
   kay_and_value(T, [H | Acc1], [H1 | Acc2]).
@@ -146,3 +149,23 @@ get_map_from_value([H|T], Acc, Acc1) when is_binary(H) ->
 
 get_map([Map]) ->
   Map.
+
+trim_binary(List) when is_list(List) ->
+  trim_for_list(List, []);
+trim_binary(Bin) when is_binary(Bin) ->
+  string:trim(Bin).
+
+trim_for_list([], Acc) ->
+  lists:reverse(Acc);
+trim_for_list([H | T], Acc) when is_map(H) ->
+  trim_for_list(T, [H | Acc]);
+trim_for_list([H | T], Acc) when is_binary(H) ->
+  H1 = check_bin(H, <<>>),
+  trim_for_list(T, [ string:trim(H1) | Acc]).
+
+check_bin(<<>>, BinAcc) ->
+  BinAcc;
+check_bin(<<"[", Rest/binary>>, BinAcc) ->
+  check_bin(Rest, BinAcc);
+check_bin(<<X, Rest/binary>>, BinAcc) ->
+  check_bin(Rest, <<BinAcc/binary, X>>).
