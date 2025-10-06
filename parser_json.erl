@@ -3,10 +3,15 @@
 -export([decode/1]).
 
 decode(Json) ->
-  List = decode(Json, <<>>, [], 0),
-  {Kay, Value} = filter_kay_or_value(List, <<>>, [], []),
-  NewValue = check_value(Value, <<>>, []),
-  create_map(Kay, NewValue, #{}).
+  case validate_input(Json) of
+    ok ->
+      List = decode(Json, <<>>, [], 0),
+      {Kay, Value} = filter_kay_or_value(List, <<>>, [], []),
+      NewValue = check_value(Value, <<>>, []),
+      create_map(Kay, NewValue, #{});
+    {error, Reason} ->
+      {error, Reason}
+  end.
 
 decode(<<>>, BinAcc, Acc, 0) ->
   lists:reverse([BinAcc | Acc]);
@@ -110,7 +115,7 @@ create_list(<<X, Rest/binary>>, BinAcc, Acc) ->
   create_list(Rest, <<BinAcc/binary, X>>, Acc).
 
 trim_binary(Map) when is_map(Map) ->
-   Map;
+  Map;
 trim_binary(List) when is_list(List) ->
   trim_for_list(List, []);
 trim_binary(Bin) when is_binary(Bin) ->
@@ -124,7 +129,8 @@ trim_for_list([H | T], Acc) when is_map(H) ->
   trim_for_list(T, [H | Acc]);
 trim_for_list([H | T], Acc) when is_binary(H) ->
   H1 = check_bin(H, <<>>),
-  trim_for_list(T, [ string:trim(H1) | Acc]).
+  Cleaned =  string:trim(H1),
+  trim_for_list(T, [Cleaned | Acc]).
 
 one_list([H]) ->
   H.
@@ -211,6 +217,10 @@ create_two_map([], Acc, Acc1) ->
 create_two_map([H, H1| T], Acc, Acc1) ->
   create_two_map(T, [H | Acc], [H1 | Acc1]).
 
+kay_value([], <<>>, V, Kay, Value) ->
+  V1 = lists:reverse(V),
+  Value1 = lists:reverse([V1 | Value]),
+  {lists:reverse(Kay), Value1};
 kay_value([[]], <<>>, V, Kay, Value) ->
   V1 = lists:reverse(V),
   Value1 = lists:reverse([V1 | Value]),
@@ -244,3 +254,14 @@ is_key(Bin) when is_binary(Bin) ->
   BinTrim = string:trim(Bin),
   lists:any(fun(Prefix) -> binary:match(BinTrim, Prefix) =/= nomatch end,
     [<<"name:">>, <<"age:">>, <<"secretIdentity:">>, <<"powers:">>]).
+
+validate_input(Json) ->
+  try
+    Clean = string:trim(Json),
+    case {binary:first(Clean), binary:last(Clean)} of
+      {${, $}} -> ok;
+      _ -> {error, invalid_json_format}
+    end
+  catch
+    _:Reason -> {error, Reason}
+  end.
